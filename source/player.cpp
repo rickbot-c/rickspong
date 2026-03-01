@@ -59,7 +59,7 @@ float Player::GetPlayerSpeedMult() const {
 }
 
 float Player::GetBallMaxSpeed() const {
-    return 1400.0f * (1.0f - upgLevels[UPG_BALL_SLOW] * 0.08f);
+    return 1400.0f; // placeholder, no ball speed upgrades yet
 }
 
 float Player::GetBonusMult() const {

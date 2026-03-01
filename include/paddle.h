@@ -12,6 +12,7 @@ public:
     float   aiSpeedFactor = AI_SPEED_BASE;
     float   squishY      = 1.0f;
     float   squishVelY   = 0.0f;
+    float velY = 0.0f;   // updated each frame, used for spin transfer
 
     Paddle(float x, float y);
 

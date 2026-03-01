@@ -13,6 +13,12 @@
                 "-I${workspaceFolder}\\include\\raylib", // raylib headers
                 // Source file(s)
                 "${workspaceFolder}\\source\\main.cpp",
+                "${workspaceFolder}\\source\\ball.cpp",
+                "${workspaceFolder}\\source\\paddle.cpp",
+                "${workspaceFolder}\\source\\player.cpp",
+                "${workspaceFolder}\\source\\particles.cpp",
+                "${workspaceFolder}\\source\\upgrades.cpp",
+                "${workspaceFolder}\\source\\hud.cpp",
                 // Library paths
                 "-L${workspaceFolder}\\include\\raylib",
                 "-lraylib",

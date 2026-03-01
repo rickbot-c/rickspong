@@ -6,7 +6,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
 enum UpgradeID {
     UPG_PLAYER_SPEED,
-    UPG_BALL_SLOW,
     UPG_SHIELD,
     UPG_MULTIPLIER,
     UPG_COUNT

@@ -7,6 +7,8 @@ public:
     float   radius    = 12.0f;
     float   squish    = 1.0f;
     float   squishVel = 0.0f;
+    float spin    = 0.0f;   // + = topspin, - = backspin  (pixels/s of lateral pull)
+    float spinDecay = 0.92f; // per-second multiplier, framerate-independent
 
     Ball();
 

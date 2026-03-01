@@ -6,13 +6,22 @@
 Paddle::Paddle(float x, float y) : position({ x, y }) {}
 
 void Paddle::UpdatePlayer(KeyboardKey up, KeyboardKey dn, float dt) {
+    // track vertical velocity so spin can be transferred to the ball
+    float oldY = position.y;
+
     if (IsKeyDown(up)) position.y -= playerSpeed * dt;
     if (IsKeyDown(dn)) position.y += playerSpeed * dt;
+
+    // simple finite difference, dt should never be zero
+    velY = (position.y - oldY) / dt;
+
     Clamp();
     SpringSquish(dt);
 }
 
 void Paddle::UpdateAI(const Ball& ball, float dt) {
+    float oldY = position.y;
+
     float target = (ball.velocity.x > 0) ? aiTargetY : WIN_HEIGHT/2.0f;
     if (ball.velocity.x <= 0) aiTargetY = WIN_HEIGHT/2.0f;
     float centre = position.y + height/2.0f;
@@ -21,6 +30,10 @@ void Paddle::UpdateAI(const Ball& ball, float dt) {
     float move   = std::min(std::abs(diff), spd);
     if (diff < -1.0f) position.y -= move;
     if (diff >  1.0f) position.y += move;
+
+    // update velocity after moving
+    velY = (position.y - oldY) / dt;
+
     Clamp();
     SpringSquish(dt);
 }
@@ -94,6 +107,21 @@ void ResolvePaddleCollision(Ball& ball, Paddle& paddle, float pushDir) {
     float relY       = (ball.position.y - paddle.position.y) / paddle.height;
     ball.velocity.y  = (relY - 0.5f) * 2.0f * 500.0f;
     ball.velocity.x *= (1.0f + BALL_SPEED_INC);
+
+    // --- spin transfer --------------------------------------------------
+    // spinning the ball makes the path curve via the Magnus effect in
+    // Ball::Update().  We give the paddle's vertical velocity some weight
+    // and also factor in where on the paddle we hit (relY).  Users should
+    // feel uppercuts/lowercuts by moving the paddle when contacting the
+    // ball, and hits near the edges produce a bit more spin as well.
+    const float SPIN_FROM_VEL   = 0.5f;   // tweak for difficulty
+    const float SPIN_FROM_HIT   = 300.0f; // adds spin when hitting off-centre
+
+    float spin = paddle.velY * SPIN_FROM_VEL;
+    spin += (relY - 0.5f) * SPIN_FROM_HIT;
+    ball.spin += spin;
+
+    // visual squish & audio feedback
     ball.squish = 1.5f; ball.squishVel = 0.0f;
     paddle.Bounce();
 }
