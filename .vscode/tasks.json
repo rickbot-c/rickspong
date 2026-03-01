@@ -1,0 +1,37 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "cppbuild",
+            "label": "Build",
+            "command": "C:\\msys64\\ucrt64\\bin\\g++.exe",
+            "args": [
+                "-fdiagnostics-color=always",
+                "-g",
+                // Include paths
+                "-I${workspaceFolder}\\include",
+                "-I${workspaceFolder}\\include\\raylib", // raylib headers
+                // Source file(s)
+                "${workspaceFolder}\\source\\main.cpp",
+                // Library paths
+                "-L${workspaceFolder}\\include\\raylib",
+                "-lraylib",
+                "-lopengl32",
+                "-lgdi32",
+                "-lwinmm",
+                // Static runtime
+                "-static-libgcc",
+                "-static-libstdc++",
+                "-o",
+                "${workspaceFolder}\\bin\\main.exe"
+            ],
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
+}
