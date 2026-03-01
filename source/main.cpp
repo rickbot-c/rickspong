@@ -162,6 +162,36 @@ int main() {
                 roundMult = CalcMultiplier(roundHits, player.GetBonusMult());
             }
 
+            // ── Debug: Press F to skip and win ───────────────────────────
+            if (IsKeyPressed(KEY_F)) {
+                playerScore++;
+                playerPop   = 1.5f;
+                state       = WAITING;
+                float win   = BASE_ROUND_REWARD * roundMult;
+                player.AddMoney(win);
+                resultDelta = win;
+                lastResult  = RESULT_WIN;
+                resultTimer = RESULT_TIME;
+                PlaySound(sndCollect);
+                SpawnHitParticles({ (float)WIN_WIDTH, WIN_HEIGHT/2.0f }, COL_PLAYER, 40);
+                TriggerShake(8.0f, 0.15f);
+
+                // ── Award XP ─────────────────────────────────────────────
+                float xpGain = XP_WIN_BASE + roundHits * XP_RALLY_BONUS;
+                player.AddXP(xpGain);
+                SpawnFloatText({ WIN_WIDTH/2.0f, WIN_HEIGHT/2.0f - 80 },
+                               TextFormat("+%.0f XP", xpGain), COL_XP, 20);
+
+                if (player.levelledUp) {
+                    PlaySound(sndLevelUp);
+                    SpawnFloatText({ WIN_WIDTH/2.0f, WIN_HEIGHT/2.0f - 120 },
+                                   TextFormat("LEVEL UP!  LVL %d", player.level),
+                                   COL_GOLD, 32);
+                    SpawnHitParticles({ WIN_WIDTH/2.0f, WIN_HEIGHT/2.0f }, COL_GOLD, 50);
+                    TriggerShake(10.0f, 0.18f);
+                }
+            }
+
             // ── Ball exits left → AI scores (or shield absorbs) ───────────
             if (ball.position.x + ball.radius < 0) {
                 if (player.ConsumeShield()) {

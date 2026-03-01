@@ -25,6 +25,7 @@ public:
 
 private:
     float aiTargetY = WIN_HEIGHT / 2.0f;
+    float aiRecalcTimer = 0.0f;  // countdown to next target recalc
 
     float PredictBallY(const Ball& ball) const;
     void  Clamp();

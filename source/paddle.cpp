@@ -22,14 +22,26 @@ void Paddle::UpdatePlayer(KeyboardKey up, KeyboardKey dn, float dt) {
 void Paddle::UpdateAI(const Ball& ball, float dt) {
     float oldY = position.y;
 
-    float target = (ball.velocity.x > 0) ? aiTargetY : WIN_HEIGHT/2.0f;
-    if (ball.velocity.x <= 0) aiTargetY = WIN_HEIGHT/2.0f;
-    float centre = position.y + height/2.0f;
-    float diff   = target - centre;
-    float spd    = PLAYER_SPEED * aiSpeedFactor * dt;
-    float move   = std::min(std::abs(diff), spd);
+    // Recalculate target periodically (more often at higher difficulty)
+    aiRecalcTimer -= dt;
+    if (ball.velocity.x > 0) {
+        float recalcFreq = 0.05f + (1.0f - aiSpeedFactor / AI_SPEED_MAX) * 0.15f;  // easy = slow updates
+        if (aiRecalcTimer <= 0) {
+            RecalcTarget(ball);
+            aiRecalcTimer = recalcFreq;
+        }
+    } else {
+        aiTargetY = WIN_HEIGHT / 2.0f;
+        aiRecalcTimer = 0.0f;
+    }
+
+    // Move toward target
+    float centre = position.y + height / 2.0f;
+    float diff = aiTargetY - centre;
+    float spd = PLAYER_SPEED * aiSpeedFactor * dt;
+    float move = std::min(std::abs(diff), spd);
     if (diff < -1.0f) position.y -= move;
-    if (diff >  1.0f) position.y += move;
+    if (diff > 1.0f) position.y += move;
 
     // update velocity after moving
     velY = (position.y - oldY) / dt;
@@ -40,13 +52,31 @@ void Paddle::UpdateAI(const Ball& ball, float dt) {
 
 void Paddle::RecalcTarget(const Ball& ball) {
     if (ball.velocity.x <= 0) { aiTargetY = WIN_HEIGHT/2.0f; return; }
-    float pred     = PredictBallY(ball);
-    float errRange = 10.0f + (ball.GetSpeed() - BALL_SPEED_INITIAL) * 0.015f;
-    errRange = std::min(errRange, height * 0.72f);
-    float t = std::max(0.0f, std::min(1.0f,
+    float pred = PredictBallY(ball);
+    
+    // Difficulty: 0 = easiest, 1 = hardest
+    float difficulty = std::max(0.0f, std::min(1.0f,
         (aiSpeedFactor - AI_SPEED_MIN) / (AI_SPEED_MAX - AI_SPEED_MIN)));
-    errRange *= (0.02f + 0.98f*(1.0f - t));
-    aiTargetY = pred + (GetRandomValue(-100, 100)/100.0f) * errRange;
+    
+    // At lowest difficulty: huge error, bad predictions
+    // At highest difficulty: tiny error, near-perfect hit
+    // Use cubic scaling so low difficulty is VERY dumb
+    float errorScale = (1.0f - difficulty) * (1.0f - difficulty) * (1.0f - difficulty);
+    
+    // Base error from ball speed + difficulty
+    float maxErr = 120.0f + (ball.GetSpeed() - BALL_SPEED_INITIAL) * 0.03f;
+    float actualErr = maxErr * errorScale;
+    
+    // At low difficulty, also add some"reaction delay" uncertainty
+    if (difficulty < 0.7f) {
+        actualErr += (0.7f - difficulty) * 80.0f;
+    }
+    
+    // Random error in range
+    aiTargetY = pred + (GetRandomValue(-100, 100) / 100.0f) * actualErr;
+    
+    // Clamp to keep paddle centered vertically on the hit
+    aiTargetY = std::max(height / 2.0f, std::min(WIN_HEIGHT - height / 2.0f, aiTargetY));
 }
 
 void Paddle::Bounce() { squishY = 0.55f; squishVelY = 0.0f; }
@@ -71,12 +101,29 @@ float Paddle::PredictBallY(const Ball& ball) const {
     float vx = ball.velocity.x;
     if (vx <= 0) return ball.position.y;
     float t  = (position.x - ball.position.x) / vx;
-    float py = ball.position.y + ball.velocity.y * t;
+    if (t < 0) return ball.position.y;
+
+    // Predict Y accounting for spin curvature (magnus effect)
+    // Spin creates perpendicular acceleration that curves the ball's path
+    float spd = ball.GetSpeed();
+    float spinCurve = 0.0f;
+    
+    if (spd > 0.001f && std::abs(ball.spin) > 0.1f) {
+        // Rough approximation: spin causes lateral acceleration
+        // magnitude depends on spin, speed, and time to impact
+        float spinMag = std::abs(ball.spin) / spd;
+        spinCurve = ball.spin * t * t * 0.3f;  // quadratic curve accumulation
+    }
+
+    // Base prediction with spin curve
+    float py = ball.position.y + ball.velocity.y * t + spinCurve;
+    
+    // Wall bounces mirror the trajectory
     float mn = ball.radius, mx = WIN_HEIGHT - ball.radius, rng = mx - mn;
     py -= mn;
     if (rng > 0) {
-        py = std::fmod(std::abs(py), rng*2.0f);
-        if (py > rng) py = rng*2.0f - py;
+        py = std::fmod(std::abs(py), rng * 2.0f);
+        if (py > rng) py = rng * 2.0f - py;
     }
     return py + mn;
 }
@@ -114,10 +161,11 @@ void ResolvePaddleCollision(Ball& ball, Paddle& paddle, float pushDir) {
     // and also factor in where on the paddle we hit (relY).  Users should
     // feel uppercuts/lowercuts by moving the paddle when contacting the
     // ball, and hits near the edges produce a bit more spin as well.
-    const float SPIN_FROM_VEL   = 0.5f;   // tweak for difficulty
-    const float SPIN_FROM_HIT   = 300.0f; // adds spin when hitting off-centre
+    const float SPIN_FROM_VEL   = 0.3f;   // reduced to avoid aggressive curves
+    const float SPIN_FROM_HIT   = 150.0f; // reduced edge spin
 
-    float spin = paddle.velY * SPIN_FROM_VEL;
+    // negate velY so upward motion creates backspin (curves forward, not back)
+    float spin = -paddle.velY * SPIN_FROM_VEL;
     spin += (relY - 0.5f) * SPIN_FROM_HIT;
     ball.spin += spin;
 

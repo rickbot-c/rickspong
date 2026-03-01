@@ -10,9 +10,9 @@ constexpr float BALL_SPEED_INITIAL  = 280.0f;
 constexpr float BALL_SPEED_INC      = 0.12f;
 constexpr float PLAYER_SPEED        = 380.0f;
 
-// AI difficulty
-constexpr float AI_SPEED_MIN  = 0.50f;
-constexpr float AI_SPEED_MAX  = 3.6f;
+// AI difficulty: wider range for extreme difficulty difference
+constexpr float AI_SPEED_MIN  = 0.25f;   // very dumb (lots of error)
+constexpr float AI_SPEED_MAX  = 5.0f;    // nearly unbeatable
 constexpr float AI_SPEED_BASE = 1.0f;
 constexpr int   SCORE_CLAMP   = 3;
 
