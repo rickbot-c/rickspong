@@ -30,6 +30,10 @@ constexpr float XP_SCALE           = 1.45f;    // multiplier per level
 constexpr float XP_WIN_BASE        = 30.0f;    // XP awarded for winning a round
 constexpr float XP_RALLY_BONUS     = 2.5f;     // extra XP per hit in the rally
 
+// Audio
+constexpr float MUSIC_MAX_VOLUME      = 0.1f;    // top level when fade‑in completes
+constexpr float MUSIC_FADE_IN_SPEED   = 0.4f;    // volume units per second
+
 // Palette
 constexpr Color COL_BG      = {  18,  20,  40, 255 };
 constexpr Color COL_PLAYER  = {  80, 200, 255, 255 };

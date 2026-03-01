@@ -22,6 +22,7 @@ enum ResultType { RESULT_NONE, RESULT_WIN, RESULT_LOSE };
 int main() {
     SetConfigFlags(FLAG_MSAA_4X_HINT);
     SetTargetFPS(0);
+    SetExitKey(KEY_NULL); // disable default ESC exit
     InitWindow(WIN_WIDTH, WIN_HEIGHT, "Rick's Pong");
     InitAudioDevice();
 
@@ -30,10 +31,13 @@ int main() {
     Sound sndCollect = LoadSound("../sounds/collect.wav");
     Sound sndLevelUp = LoadSound("../sounds/collect.wav");   // swap for a dedicated clip later
 
+    Image icon = LoadImage("../images/icon.png");
+    SetWindowIcon(icon);
+
     Music music = LoadMusicStream("../sounds/soundtrack.ogg");
     SetMusicVolume(music, 0.0f);
     PlayMusicStream(music);
-    float musicVol = 0.0f;
+    float musicVol = 0.0f;        // current volume, smoothly ramps to max
 
     // ── Game objects ─────────────────────────────────────────────────────────
     Ball   ball;
@@ -80,7 +84,8 @@ int main() {
         if (dt > 0.05f) dt = 0.05f;
 
         // Music fade in
-        musicVol = std::min(musicVol + 0.4f*dt, 0.85f);
+        musicVol = std::min(musicVol + MUSIC_FADE_IN_SPEED * dt,
+                              MUSIC_MAX_VOLUME);
         SetMusicVolume(music, musicVol);
         UpdateMusicStream(music);
 
