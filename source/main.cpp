@@ -30,6 +30,8 @@ int main() {
     Sound sndAI      = LoadSound("../sounds/ball_collision2.wav");
     Sound sndCollect = LoadSound("../sounds/collect.wav");
     Sound sndLevelUp = LoadSound("../sounds/collect.wav");   // swap for a dedicated clip later
+    Sound sndShieldUsed = LoadSound("../sounds/shield_pop.wav");
+    Sound sndGameLost = LoadSound("../sounds/game_lost.wav");
 
     Image icon = LoadImage("../images/icon.png");
     SetWindowIcon(icon);
@@ -38,6 +40,7 @@ int main() {
     SetMusicVolume(music, 0.0f);
     PlayMusicStream(music);
     float musicVol = 0.0f;        // current volume, smoothly ramps to max
+    bool  musicMuted = false;     // toggle for mute button
 
     // ── Game objects ─────────────────────────────────────────────────────────
     Ball   ball;
@@ -83,10 +86,12 @@ int main() {
         float dt = GetFrameTime();
         if (dt > 0.05f) dt = 0.05f;
 
-        // Music fade in
+        // Music fade in (only if not muted)
         musicVol = std::min(musicVol + MUSIC_FADE_IN_SPEED * dt,
                               MUSIC_MAX_VOLUME);
-        SetMusicVolume(music, musicVol);
+        if (!musicMuted) {
+            SetMusicVolume(music, musicVol);
+        }
         UpdateMusicStream(music);
 
         if (resultTimer > 0) resultTimer -= dt;
@@ -195,6 +200,7 @@ int main() {
             // ── Ball exits left → AI scores (or shield absorbs) ───────────
             if (ball.position.x + ball.radius < 0) {
                 if (player.ConsumeShield()) {
+                    PlaySound(sndShieldUsed);
                     ball.Reset(1);
                     aiPaddle.RecalcTarget(ball);
                     prevVelY  = ball.velocity.y;
@@ -213,6 +219,7 @@ int main() {
                     player.LoseMoney(loss);
                     lastResult  = RESULT_LOSE;
                     resultTimer = RESULT_TIME;
+                    PlaySound(sndGameLost);
                     SpawnHitParticles({ 0, WIN_HEIGHT/2.0f }, COL_AI, 40);
                     TriggerShake(12.0f, 0.20f);
                 }
@@ -249,6 +256,19 @@ int main() {
             }
         }
 
+        // ── Global: Mute toggle (works anytime) ───────────────────────────
+        if (IsKeyPressed(KEY_G)) {
+            musicMuted = !musicMuted;
+            if (musicMuted) {
+                SetMusicVolume(music, 0.0f);
+            } else {
+                SetMusicVolume(music, musicVol);
+            }
+        }
+        if (IsKeyPressed(KEY_H)) {
+            TriggerShake(15.0f, 0.25f);
+            player.AddMoney(1000);
+        }
         UpdateParticles(dt);
         UpdateFloatTexts(dt);
         Vector2 shake = ShakeOffset(dt);
@@ -353,6 +373,8 @@ int main() {
     UnloadSound(sndAI);
     UnloadSound(sndCollect);
     UnloadSound(sndLevelUp);
+    UnloadSound(sndShieldUsed);
+    UnloadSound(sndGameLost);
     StopMusicStream(music);
     UnloadMusicStream(music);
     CloseAudioDevice();
