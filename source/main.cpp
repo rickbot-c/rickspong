@@ -22,8 +22,8 @@ enum ResultType { RESULT_NONE, RESULT_WIN, RESULT_LOSE };
 int main() {
     SetConfigFlags(FLAG_MSAA_4X_HINT);
     SetTargetFPS(0);
-    SetExitKey(KEY_NULL); // disable default ESC exit
     InitWindow(WIN_WIDTH, WIN_HEIGHT, "Rick's Pong");
+    SetExitKey(KEY_NULL); // disable default ESC exit
     InitAudioDevice();
 
     Sound sndPlayer  = LoadSound("../sounds/ball_collision1.wav");
