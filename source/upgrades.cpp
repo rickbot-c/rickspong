@@ -9,6 +9,11 @@ const UpgradeDef UPGRADES[UPG_COUNT] = {
     { "COMBO BOOST", "+rally mult bonus",       50.0f, 3.5f, 5, { 255, 140,  60, 255 } },
 };
 
+const AbilityDef ABILITIES[ABL_COUNT] = {
+    { "SPEED BOOST",  "Ball 1.5x faster",  500.0f, 15.0f, { 100, 200, 255, 255 } },
+    { "PULL",         "Reverse direction", 400.0f, 10.0f, { 255, 100, 200, 255 } },
+};
+
 float UpgradeCost(UpgradeID id, int currentLevel) {
     float c = UPGRADES[id].baseCost;
     for (int i = 0; i < currentLevel; i++) c *= UPGRADES[id].costScale;

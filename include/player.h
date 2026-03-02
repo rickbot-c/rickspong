@@ -17,6 +17,11 @@ public:
     // Upgrades
     int   upgLevels[UPG_COUNT] = {};
 
+    // Abilities
+    bool  ownedAbilities[ABL_COUNT] = {};
+    float abilityCooldowns[ABL_COUNT] = {};  // countdown timers
+    KeyboardKey abilityKeys[ABL_COUNT] = { KEY_E, KEY_R };  // customizable keybinds
+
     // Per-round state
     int   shieldHP  = 0;
 
@@ -34,6 +39,13 @@ public:
     bool  CanBuyUpgrade(UpgradeID id) const;
     bool  BuyUpgrade(UpgradeID id);     // returns false if can't afford / maxed
 
+    // ── Abilities ─────────────────────────────────────────────────────────────
+    bool  CanBuyAbility(AbilityID id) const;
+    bool  BuyAbility(AbilityID id);     // returns false if can't afford / already owned
+    bool  CanUseAbility(AbilityID id) const;
+    void  UseAbility(AbilityID id);     // activates ability, starts cooldown
+    void  UpdateAbilityCooldowns(float dt);
+
     float GetPlayerSpeedMult()  const;
     float GetBallMaxSpeed()     const;
     float GetBonusMult()        const;
@@ -42,6 +54,10 @@ public:
     // Called when player presses SPACE; deducts cost, sets shieldHP
     void  PrepareShields();
     bool  ConsumeShield();              // returns true if a shield was used
+
+    // ── Save/Load ────────────────────────────────────────────────────────
+    bool  SaveGame(const char* filename) const;
+    bool  LoadGame(const char* filename);
 
 private:
     float XPRequired(int forLevel) const;

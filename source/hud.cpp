@@ -111,7 +111,7 @@ void DrawShieldPips(int shieldHP, int upgShieldLevel, float playerMoney, int sta
 // ─────────────────────────────────────────────────────────────────────────────
 void DrawUpgradeShop(const Player& player, int& hovered) {
     DrawRectangle(0, 0, WIN_WIDTH, WIN_HEIGHT, {0,0,0,175});
-    int pw=500, ph=420, px=WIN_WIDTH/2-250, py=WIN_HEIGHT/2-210;
+    int pw=500, ph=520, px=WIN_WIDTH/2-250, py=WIN_HEIGHT/2-260;
     DrawOutlinedRect({(float)px,(float)py,(float)pw,(float)ph},
                      0.12f, {15,18,38,248}, COL_GOLD, 3.5f);
 
@@ -122,11 +122,15 @@ void DrawUpgradeShop(const Player& player, int& hovered) {
     int cw = MeasureText(coinStr, 15);
     DrawText(coinStr, WIN_WIDTH/2-cw/2, py+52, 15, COL_GREEN);
 
+    // Section header for upgrades
+    DrawText("UPGRADES", px+20, py+80, 14, Fade(COL_GOLD, 0.8f));
+
     hovered = -1;
     int mx = GetMouseX(), my = GetMouseY();
 
+    // Draw upgrades
     for (int i = 0; i < UPG_COUNT; i++) {
-        int bx=px+20, by2=py+80+i*58, bw2=pw-40, bh2=50;
+        int bx=px+20, by2=py+100+i*58, bw2=pw-40, bh2=50;
         bool maxed  = (player.upgLevels[i] >= UPGRADES[i].maxLevel);
         float cost  = maxed ? 0 : UpgradeCost((UpgradeID)i, player.upgLevels[i]);
         bool canBuy = (!maxed && player.money >= cost);
@@ -149,6 +153,32 @@ void DrawUpgradeShop(const Player& player, int& hovered) {
 
         if (maxed)
             DrawText("MAXED", bx+bw2-58, by2+31, 13, COL_GREEN);
+        else
+            DrawText(TextFormat("%.0f c", cost), bx+bw2-60, by2+31, 13,
+                     canBuy ? COL_GOLD : COL_RED);
+    }
+
+    // Section header for abilities
+    DrawText("ABILITIES", px+20, py+276, 14, Fade({ 100, 200, 255, 255 }, 0.8f));
+
+    // Draw abilities
+    for (int i = 0; i < ABL_COUNT; i++) {
+        int bx=px+20, by2=py+296+i*58, bw2=pw-40, bh2=50;
+        bool owned  = player.ownedAbilities[i];
+        float cost  = ABILITIES[i].cost;
+        bool canBuy = (!owned && player.money >= cost);
+        bool over   = (mx>=bx && mx<=bx+bw2 && my>=by2 && my<=by2+bh2);
+        if (over) hovered = UPG_COUNT + i;
+
+        Color bg   = (over && canBuy) ? Color{30,40,80,255} : Color{20,24,50,240};
+        Color bord = owned ? COL_GREEN : (canBuy ? ABILITIES[i].accent : Color{60,60,80,255});
+        DrawOutlinedRect({(float)bx,(float)by2,(float)bw2,(float)bh2},
+                         0.25f, bg, bord, 2.5f);
+        DrawOutlinedText(ABILITIES[i].name, bx+10, by2+7,  16, owned ? COL_GREEN : WHITE, 1);
+        DrawText(ABILITIES[i].desc,         bx+10, by2+28, 11, Fade(WHITE, 0.55f));
+
+        if (owned)
+            DrawText("OWNED", bx+bw2-58, by2+31, 13, COL_GREEN);
         else
             DrawText(TextFormat("%.0f c", cost), bx+bw2-60, by2+31, 13,
                      canBuy ? COL_GOLD : COL_RED);

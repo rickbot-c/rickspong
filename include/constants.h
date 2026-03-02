@@ -6,7 +6,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 constexpr int   WIN_WIDTH           = 800;
 constexpr int   WIN_HEIGHT          = 650;
-constexpr float BALL_SPEED_INITIAL  = 280.0f;
+constexpr float BALL_SPEED_INITIAL  = 320.0f;
 constexpr float BALL_SPEED_INC      = 0.12f;
 constexpr float PLAYER_SPEED        = 380.0f;
 
@@ -20,8 +20,8 @@ constexpr int   SCORE_CLAMP   = 3;
 constexpr float MULTIPLIER_PER_HIT = 1.15f;
 constexpr float BASE_ROUND_REWARD  = 12.0f;
 constexpr float BASE_ROUND_LOSS    = 18.0f;
-constexpr float MONEY_FLOOR        = -500.0f;
-constexpr float MULT_CAP           = 500.0f;
+constexpr float MONEY_FLOOR        = -1020.0f;
+constexpr float MULT_CAP           = 50.0f;
 constexpr float SHIELD_USE_COST    = 30.0f;
 
 // Leveling

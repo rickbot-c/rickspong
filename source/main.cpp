@@ -16,8 +16,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Game states
 // ─────────────────────────────────────────────────────────────────────────────
-enum State    { WAITING, PLAYING, SHOP };
+enum State { TITLE, MODE_SELECT, WAITING, PLAYING, SHOP };
 enum ResultType { RESULT_NONE, RESULT_WIN, RESULT_LOSE };
+enum GameMode { MODE_AI, MODE_2PLAYER };
 
 int main() {
     SetConfigFlags(FLAG_MSAA_4X_HINT);
@@ -40,7 +41,7 @@ int main() {
     SetMusicVolume(music, 0.0f);
     PlayMusicStream(music);
     float musicVol = 0.0f;        // current volume, smoothly ramps to max
-    bool  musicMuted = false;     // toggle for mute button
+    bool  musicMuted = true;     // toggle for mute button
 
     // ── Game objects ─────────────────────────────────────────────────────────
     Ball   ball;
@@ -48,18 +49,24 @@ int main() {
     Paddle aiPaddle    (WIN_WIDTH - 66,  WIN_HEIGHT/2.0f - 50);
     Player player;
 
+    // ── Game mode ────────────────────────────────────────────────────────────
+    GameMode gameMode = MODE_AI;
+
     // ── Match state ──────────────────────────────────────────────────────────
     int   playerScore = 0, aiScore = 0;
     int   roundHits   = 0;
     float roundMult   = 1.0f;
 
-    State      state      = WAITING;
+    State      state      = TITLE;
     ResultType lastResult = RESULT_NONE;
     float resultTimer = 0.0f, resultDelta = 0.0f;
     constexpr float RESULT_TIME = 2.2f;
 
     float prevVelY      = 0.0f;
     int   hoveredUpgrade = -1;
+
+    // Ability state
+    float speedBoostTimer = 0.0f;  // tracks remaining effect duration
 
     // Score pop animations
     float playerPop = 1.0f, aiPop = 1.0f;
@@ -77,6 +84,10 @@ int main() {
     auto syncPaddleSpeed = [&]() {
         playerPaddle.playerSpeed = PLAYER_SPEED * player.GetPlayerSpeedMult();
     };
+    syncPaddleSpeed();
+
+    // ── Load saved game ────────────────────────────────────────────────────────
+    player.LoadGame("../savegame.txt");
     syncPaddleSpeed();
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -101,8 +112,29 @@ int main() {
         // Live difficulty
         aiPaddle.aiSpeedFactor = CalcAISpeedFactor(playerScore, aiScore);
 
+        // Update ability cooldowns
+        player.UpdateAbilityCooldowns(dt);
+        if (speedBoostTimer > 0) speedBoostTimer -= dt;
+
         // ── Input / state ─────────────────────────────────────────────────
-        if (state == WAITING) {
+        if (state == TITLE) {
+            if (IsKeyPressed(KEY_SPACE) || IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+                state = MODE_SELECT;
+            }
+        }
+        else if (state == MODE_SELECT) {
+            // Simple mode selection - click left for AI, right for 2P
+            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+                gameMode = MODE_AI;
+                state = WAITING;
+            }
+            if (IsMouseButtonPressed(MOUSE_RIGHT_BUTTON)) {
+                gameMode = MODE_2PLAYER;
+                state = WAITING;
+            }
+            if (IsKeyPressed(KEY_ESCAPE)) state = TITLE;
+        }
+        else if (state == WAITING) {
             if (IsKeyPressed(KEY_SPACE)) {
                 player.PrepareShields();
                 ball.Reset(1);
@@ -113,38 +145,83 @@ int main() {
                 state     = PLAYING;
             }
             if (IsKeyPressed(KEY_TAB)) state = SHOP;
+            if (IsKeyPressed(KEY_ESCAPE)) state = TITLE;
         }
         else if (state == SHOP) {
             if (IsKeyPressed(KEY_TAB)) { syncPaddleSpeed(); state = WAITING; }
             if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && hoveredUpgrade >= 0) {
-                UpgradeID id = (UpgradeID)hoveredUpgrade;
-                if (player.BuyUpgrade(id)) {
-                    syncPaddleSpeed();
-                    PlaySound(sndCollect);
-                    SpawnFloatText({ WIN_WIDTH/2.0f, WIN_HEIGHT/2.0f+90 },
-                                   TextFormat("Upgraded %s!", UPGRADES[id].name),
-                                   UPGRADES[id].accent, 22);
+                if (hoveredUpgrade < UPG_COUNT) {
+                    // Purchase upgrade
+                    UpgradeID id = (UpgradeID)hoveredUpgrade;
+                    if (player.BuyUpgrade(id)) {
+                        syncPaddleSpeed();
+                        PlaySound(sndCollect);
+                        SpawnFloatText({ WIN_WIDTH/2.0f, WIN_HEIGHT/2.0f+90 },
+                                       TextFormat("Upgraded %s!", UPGRADES[id].name),
+                                       UPGRADES[id].accent, 22);
+                    }
+                } else {
+                    // Purchase ability
+                    AbilityID id = (AbilityID)(hoveredUpgrade - UPG_COUNT);
+                    if (player.BuyAbility(id)) {
+                        PlaySound(sndCollect);
+                        SpawnFloatText({ WIN_WIDTH/2.0f, WIN_HEIGHT/2.0f+90 },
+                                       TextFormat("Acquired %s!", ABILITIES[id].name),
+                                       ABILITIES[id].accent, 22);
+                    }
                 }
+                // Save after purchase
+                player.SaveGame("../savegame.txt");
             }
         }
         else if (state == PLAYING) {
-            playerPaddle.UpdatePlayer(KEY_W, KEY_S, dt);
-            aiPaddle.UpdateAI(ball, dt);
+            // ── Player input ──────────────────────────────────────────────────
+            if (gameMode == MODE_2PLAYER) {
+                // Player 1: W/S, Player 2: Arrow keys
+                playerPaddle.UpdatePlayer(KEY_W, KEY_S, dt);
+                aiPaddle.UpdatePlayer(KEY_UP, KEY_DOWN, dt);  // reuse UpdatePlayer for P2
+            } else {
+                playerPaddle.UpdatePlayer(KEY_W, KEY_S, dt);
+                aiPaddle.UpdateAI(ball, dt);
+            }
+
+            // ── Ability input ─────────────────────────────────────────────────
+            // Speed Boost (customizable keybind)
+            if (IsKeyPressed(player.abilityKeys[ABL_SPEED]) && player.CanUseAbility(ABL_SPEED)) {
+                player.UseAbility(ABL_SPEED);
+                speedBoostTimer = 3.0f;  // 3 second boost duration
+                SpawnFloatText(ball.position, "SPEED BOOST!", { 100, 200, 255, 255 }, 18);
+            }
+            // Pull (customizable keybind)
+            if (IsKeyPressed(player.abilityKeys[ABL_PULL]) && player.CanUseAbility(ABL_PULL)) {
+                player.UseAbility(ABL_PULL);
+                ball.velocity.x = -ball.velocity.x;
+                SpawnFloatText(ball.position, "PULL!", { 255, 100, 200, 255 }, 18);
+            }
+
             ball.Update(dt);
+            
+            // Apply speed boost effect
+            if (speedBoostTimer > 0) {
+                float spd = ball.GetSpeed();
+                ball.velocity.x *= 1.5f;
+                ball.velocity.y *= 1.5f;
+            }
+
             ball.CapSpeed(player.GetBallMaxSpeed());
 
             // Recalc AI target on ball Y flip
             float cy = ball.velocity.y;
             if (std::abs(cy) > 0.001f && std::abs(prevVelY) > 0.001f
                 && ((cy > 0) != (prevVelY > 0)))
-                aiPaddle.RecalcTarget(ball);
+                if (gameMode == MODE_AI) aiPaddle.RecalcTarget(ball);
             prevVelY = cy;
 
             // ── Player paddle hit ─────────────────────────────────────────
             if (ball.velocity.x < 0 && BallHitsPaddleSwept(ball, playerPaddle)) {
                 ResolvePaddleCollision(ball, playerPaddle, +1.0f);
                 ball.position.x = playerPaddle.position.x + playerPaddle.width + ball.radius + 1.0f;
-                aiPaddle.RecalcTarget(ball);
+                if (gameMode == MODE_AI) aiPaddle.RecalcTarget(ball);
                 PlaySound(sndPlayer);
                 SpawnHitParticles(ball.position, COL_PLAYER, 20);
                 TriggerShake(5.0f, 0.10f);
@@ -259,6 +336,9 @@ int main() {
                     SpawnHitParticles({ WIN_WIDTH/2.0f, WIN_HEIGHT/2.0f }, COL_GOLD, 50);
                     TriggerShake(10.0f, 0.18f);
                 }
+                
+                // Save game after round
+                player.SaveGame("../savegame.txt");
             }
         }
 
@@ -289,6 +369,34 @@ int main() {
         // Stars
         for (const auto& s : stars)
             DrawCircleV(s.pos, s.r, Fade(WHITE, s.bright * 0.35f));
+
+        // ── Title screen ──────────────────────────────────────────
+        if (state == TITLE) {
+            DrawText("RICK'S PONG", WIN_WIDTH/2 - MeasureText("RICK'S PONG", 80)/2, WIN_HEIGHT/2 - 100, 80, WHITE);
+            float pulse = 0.6f + 0.4f*sinf((float)GetTime()*3.0f);
+            const char* start = "PRESS SPACE TO PLAY";
+            DrawText(start, WIN_WIDTH/2 - MeasureText(start, 24)/2, WIN_HEIGHT/2 + 40, 24, Fade(WHITE, pulse));
+            EndDrawing();
+            continue;
+        }
+
+        // ── Mode selection ────────────────────────────────────────
+        if (state == MODE_SELECT) {
+            DrawText("SELECT GAME MODE", WIN_WIDTH/2 - MeasureText("SELECT GAME MODE", 48)/2, WIN_HEIGHT/2 - 120, 48, WHITE);
+            
+            // AI button (left)
+            DrawRectangleRounded({ 60, WIN_HEIGHT/2 - 40, 200, 120 }, 0.1f, 8, Fade(COL_AI, 0.8f));
+            DrawText("AI", 80 + MeasureText("AI", 40)/2 - 20, WIN_HEIGHT/2, 40, WHITE);
+            DrawText("LEFT CLICK", 80, WIN_HEIGHT/2 + 50, 14, Fade(WHITE, 0.7f));
+            
+            // 2-Player button (right)
+            DrawRectangleRounded({ WIN_WIDTH - 260, WIN_HEIGHT/2 - 40, 200, 120 }, 0.1f, 8, Fade(COL_PLAYER, 0.8f));
+            DrawText("2P", WIN_WIDTH - 260 + MeasureText("2P", 40)/2 + 40, WIN_HEIGHT/2, 40, WHITE);
+            DrawText("RIGHT CLICK", WIN_WIDTH - 260 + 50, WIN_HEIGHT/2 + 50, 14, Fade(WHITE, 0.7f));
+            
+            EndDrawing();
+            continue;
+        }
 
         BeginMode2D(Camera2D{ shake, {0,0}, 0, 1 });
 
@@ -361,8 +469,32 @@ int main() {
             float pulse = 0.6f + 0.4f*sinf((float)GetTime()*4.0f);
             const char* sp = "PRESS SPACE TO SERVE";
             const char* tl = "[ TAB ] UPGRADE SHOP";
-            DrawText(sp, WIN_WIDTH/2-MeasureText(sp,20)/2, WIN_HEIGHT/2+30, 20, Fade(WHITE, pulse));
-            DrawText(tl, WIN_WIDTH/2-MeasureText(tl,14)/2, WIN_HEIGHT/2+60, 14, Fade(COL_GOLD, pulse*0.8f));
+            DrawText(sp, WIN_WIDTH/2-MeasureText(sp,20)/2, WIN_HEIGHT/2+70, 20, Fade(WHITE, pulse));
+            DrawText(tl, WIN_WIDTH/2-MeasureText(tl,14)/2, WIN_HEIGHT/2+100, 14, Fade(COL_GOLD, pulse*0.8f));
+            
+            // Show ability cooldowns
+            int y = WIN_HEIGHT - 140;
+            DrawText("ABILITIES:", 14, y, 14, Fade(WHITE, 0.7f));
+            
+            // Speed Boost (E)
+            if (player.ownedAbilities[ABL_SPEED]) {
+                Color speedColor = player.CanUseAbility(ABL_SPEED) ? (Color){ 100, 200, 255, 255 } : (Color){ 100, 100, 100, 255 };
+                DrawRectangleRounded({ 14, (float)y+20, 50, 50 }, 0.3f, 4, speedColor);
+                DrawText("E", 28, y+30, 20, BLACK);
+                if (!player.CanUseAbility(ABL_SPEED)) {
+                    DrawText(TextFormat("%.1f", player.abilityCooldowns[ABL_SPEED]), 25, y+35, 12, WHITE);
+                }
+            }
+            
+            // Pull (R)
+            if (player.ownedAbilities[ABL_PULL]) {
+                Color pullColor = player.CanUseAbility(ABL_PULL) ? (Color){ 255, 100, 200, 255 } : (Color){ 100, 100, 100, 255 };
+                DrawRectangleRounded({ 70, (float)y+20, 50, 50 }, 0.3f, 4, pullColor);
+                DrawText("R", 84, y+30, 20, BLACK);
+                if (!player.CanUseAbility(ABL_PULL)) {
+                    DrawText(TextFormat("%.1f", player.abilityCooldowns[ABL_PULL]), 81, y+35, 12, WHITE);
+                }
+            }
         }
 
         // ── Shop overlay ──────────────────────────────────────────────────
