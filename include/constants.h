@@ -21,7 +21,7 @@ constexpr float MULTIPLIER_PER_HIT = 1.15f;
 constexpr float BASE_ROUND_REWARD  = 12.0f;
 constexpr float BASE_ROUND_LOSS    = 18.0f;
 constexpr float MONEY_FLOOR        = -500.0f;
-constexpr float MULT_CAP           = 8.0f;
+constexpr float MULT_CAP           = 500.0f;
 constexpr float SHIELD_USE_COST    = 30.0f;
 
 // Leveling

@@ -129,8 +129,13 @@ float Paddle::PredictBallY(const Ball& ball) const {
 }
 
 void Paddle::Clamp() {
-    if (position.y < 0)               position.y = 0;
-    if (position.y + height > WIN_HEIGHT) position.y = WIN_HEIGHT - height;
+    // Always keep paddle from going too far up
+    if (position.y < 0) position.y = 0;
+    
+    // Only clamp bottom if paddle fits on screen
+    if (height <= WIN_HEIGHT && position.y + height > WIN_HEIGHT) {
+        position.y = WIN_HEIGHT - height;
+    }
 }
 
 void Paddle::SpringSquish(float dt) {
@@ -147,6 +152,50 @@ bool BallHitsPaddle(const Ball& b, const Paddle& p) {
             b.position.x - b.radius <= p.position.x + p.width &&
             b.position.y + b.radius >= p.position.y &&
             b.position.y - b.radius <= p.position.y + p.height);
+}
+
+// Swept collision: checks if ball's path from prevPosition to position intersects paddle
+bool BallHitsPaddleSwept(const Ball& b, const Paddle& p) {
+    // First, do a simple AABB check at current position
+    if (BallHitsPaddle(b, p)) return true;
+    
+    // Check if ball's trajectory crossed the paddle's X boundary
+    float prevX = b.prevPosition.x;
+    float currX = b.position.x;
+    float prevY = b.prevPosition.y;
+    float currY = b.position.y;
+    
+    // Determine which X boundary we need to check (left or right of paddle)
+    float paddleEdgeX;
+    bool isLeftSide = (prevX - b.radius > p.position.x + p.width); // was to the right, moving left
+    bool isRightSide = (prevX + b.radius < p.position.x);          // was to the left, moving right
+    
+    if (!isLeftSide && !isRightSide) return false;  // wasn't moving toward paddle
+    
+    paddleEdgeX = isLeftSide ? (p.position.x + p.width) : p.position.x;
+    
+    // Check if ball crossed this boundary during this frame
+    float minX = std::min(prevX, currX);
+    float maxX = std::max(prevX, currX);
+    
+    // Expand for ball radius
+    minX -= b.radius;
+    maxX += b.radius;
+    
+    if (minX > paddleEdgeX || maxX < paddleEdgeX) return false;  // didn't cross boundary
+    
+    // Calculate where on the paddle's Y axis the ball was when it hit the X boundary
+    float t = (prevX != currX) ? (paddleEdgeX - prevX) / (currX - prevX) : 0.5f;
+    t = std::max(0.0f, std::min(1.0f, t));  // clamp to [0, 1]
+    
+    float hitY = prevY + (currY - prevY) * t;
+    
+    // Check if hit Y is within paddle's Y bounds (with ball radius margin)
+    if (hitY + b.radius >= p.position.y && hitY - b.radius <= p.position.y + p.height) {
+        return true;
+    }
+    
+    return false;
 }
 
 void ResolvePaddleCollision(Ball& ball, Paddle& paddle, float pushDir) {

@@ -11,6 +11,7 @@ Ball::Ball() {
 
 void Ball::Reset(int dir) {
     position  = { WIN_WIDTH/2.0f, WIN_HEIGHT/2.0f };
+    prevPosition = position;
     velocity  = { BALL_SPEED_INITIAL * dir,
                   BALL_SPEED_INITIAL * (GetRandomValue(0,1) ? 1.0f : -1.0f) };
     spin      = 0.0f;              // clear any leftover rotation
@@ -27,6 +28,9 @@ void Ball::CapSpeed(float maxSpd) {
 }
 
 void Ball::Update(float dt) {
+    // Store previous position for swept collision detection
+    prevPosition = position;
+    
     // Spring squish
     float a   = -320.0f*(squish-1.0f) - 12.0f*squishVel;
     squishVel += a * dt;

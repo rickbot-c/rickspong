@@ -17,6 +17,8 @@ float UpgradeCost(UpgradeID id, int currentLevel) {
 
 float CalcMultiplier(int hits, float bonus) {
     if (hits <= 0) return 1.0f;
-    float m = 1.0f + (1.0f + bonus * 8.0f) * logf(1.0f + hits * 0.5f);
+    // Base: 1.25x per hit, bonus adds up to +0.5x per hit at max level
+    float perHit = 1.25f + bonus * 0.5f;
+    float m = powf(perHit, hits);
     return std::min(m, MULT_CAP);
 }

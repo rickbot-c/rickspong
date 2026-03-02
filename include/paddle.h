@@ -7,7 +7,7 @@ class Paddle {
 public:
     Vector2 position;
     float   width        = 16.0f;
-    float   height       = 100.0f;
+    float   height       = 800.0f;
     float   playerSpeed  = PLAYER_SPEED;
     float   aiSpeedFactor = AI_SPEED_BASE;
     float   squishY      = 1.0f;
@@ -34,5 +34,6 @@ private:
 
 // ── Collision helpers ────────────────────────────────────────────────────────
 bool BallHitsPaddle(const Ball& b, const Paddle& p);
+bool BallHitsPaddleSwept(const Ball& b, const Paddle& p);
 void ResolvePaddleCollision(Ball& ball, Paddle& paddle, float pushDir);
 float CalcAISpeedFactor(int playerScore, int aiScore);

@@ -59,7 +59,7 @@ float Player::GetPlayerSpeedMult() const {
 }
 
 float Player::GetBallMaxSpeed() const {
-    return 1400.0f; // placeholder, no ball speed upgrades yet
+    return 6000.0f; // placeholder, no ball speed upgrades yet
 }
 
 float Player::GetBonusMult() const {

@@ -141,7 +141,7 @@ int main() {
             prevVelY = cy;
 
             // ── Player paddle hit ─────────────────────────────────────────
-            if (ball.velocity.x < 0 && BallHitsPaddle(ball, playerPaddle)) {
+            if (ball.velocity.x < 0 && BallHitsPaddleSwept(ball, playerPaddle)) {
                 ResolvePaddleCollision(ball, playerPaddle, +1.0f);
                 ball.position.x = playerPaddle.position.x + playerPaddle.width + ball.radius + 1.0f;
                 aiPaddle.RecalcTarget(ball);
@@ -157,7 +157,7 @@ int main() {
             }
 
             // ── AI paddle hit ─────────────────────────────────────────────
-            if (ball.velocity.x > 0 && BallHitsPaddle(ball, aiPaddle)) {
+            if (ball.velocity.x > 0 && BallHitsPaddleSwept(ball, aiPaddle)) {
                 ResolvePaddleCollision(ball, aiPaddle, -1.0f);
                 ball.position.x = aiPaddle.position.x - ball.radius - 1.0f;
                 PlaySound(sndAI);
@@ -195,6 +195,12 @@ int main() {
                     SpawnHitParticles({ WIN_WIDTH/2.0f, WIN_HEIGHT/2.0f }, COL_GOLD, 50);
                     TriggerShake(10.0f, 0.18f);
                 }
+            }
+
+            // ── Debug: Press Y to speed up ball ───────────────────────────
+            if (IsKeyPressed(KEY_Y)) {
+                ball.velocity.x *= 1.5f;
+                ball.velocity.y *= 1.5f;
             }
 
             // ── Ball exits left → AI scores (or shield absorbs) ───────────
@@ -303,12 +309,10 @@ int main() {
 
         DrawDifficultyBar(aiPaddle.aiSpeedFactor);
 
-        playerPaddle.Draw(COL_PLAYER);
-        aiPaddle.Draw(COL_AI);
-        if (state == PLAYING) ball.Draw();
-
         DrawParticles();
         DrawFloatTexts();
+
+        EndMode2D();
 
         // ── Bottom HUD ────────────────────────────────────────────────────
         DrawXPBar(player);
@@ -365,10 +369,17 @@ int main() {
         if (state == SHOP)
             DrawUpgradeShop(player, hoveredUpgrade);
 
+        // ── Ball and paddles (drawn last to overlay HUD) ────────────────────
+        BeginMode2D(Camera2D{ shake, {0,0}, 0, 1 });
+        playerPaddle.Draw(COL_PLAYER);
+        aiPaddle.Draw(COL_AI);
+        if (state == PLAYING) ball.Draw();
         EndMode2D();
+
         EndDrawing();
     }
 
+    // cleanup
     UnloadSound(sndPlayer);
     UnloadSound(sndAI);
     UnloadSound(sndCollect);

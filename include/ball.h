@@ -4,6 +4,7 @@
 class Ball {
 public:
     Vector2 position, velocity;
+    Vector2 prevPosition;   // tracks position from last frame for swept collision
     float   radius    = 12.0f;
     float   squish    = 1.0f;
     float   squishVel = 0.0f;
