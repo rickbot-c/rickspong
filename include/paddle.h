@@ -7,7 +7,7 @@ class Paddle {
 public:
     Vector2 position;
     float   width        = 16.0f;
-    float   height       = 800.0f;
+    float   height       = 100.0f;
     float   playerSpeed  = PLAYER_SPEED;
     float   aiSpeedFactor = AI_SPEED_BASE;
     float   squishY      = 1.0f;
